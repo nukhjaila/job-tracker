@@ -16,6 +16,11 @@ const pendingMoves = new Set();
 const deleting = new Set();
 const columns = {};
 
+function isBusy(id) {
+  const key = String(id);
+  return pendingMoves.has(key) || deleting.has(key);
+}
+
 const findItem = (id) => items.find((i) => String(i.id) === String(id));
 
 // ---------- Колонки ----------
@@ -54,8 +59,10 @@ function createCard(item) {
   const li = document.createElement('li');
   li.className = 'card';
   li.dataset.id = item.id;
-  li.draggable = true;
-  if (pendingMoves.has(String(item.id))) li.classList.add('is-pending');
+  const busy = isBusy(item.id);
+
+  li.draggable = !busy;
+  if (busy) li.classList.add('is-pending');
 
   const company = document.createElement('h3');
   company.className = 'card-company';
@@ -113,6 +120,9 @@ function createCard(item) {
   del.className = 'btn btn-small btn-danger js-delete';
   del.textContent = 'Удалить';
   del.setAttribute('aria-label', `Удалить: ${item.company}, ${item.position}`);
+
+  edit.disabled = busy;
+  del.disabled = busy;
 
   actions.append(edit, del);
   li.append(actions);
@@ -262,52 +272,79 @@ function handleSaved(saved, wasEditing) {
 
 // ---------- Удаление ----------
 
-async function removeItem(id, button) {
+async function removeItem(id) {
   const item = findItem(id);
-  if (!item || deleting.has(String(id))) return;
-  if (!window.confirm(`Удалить отклик «${item.company} — ${item.position}»?`)) return;
+  const key = String(id);
 
-  deleting.add(String(id));
-  button.disabled = true;
+  if (!item || isBusy(id)) return;
+
+  if (!window.confirm(
+    `Удалить отклик «${item.company} — ${item.position}»?`,
+  )) {
+    return;
+  }
+
+  deleting.add(key);
+  render();
+
   try {
     await deleteApplication(item.id);
-    items = items.filter((i) => String(i.id) !== String(id));
-    render();
+
+    items = items.filter((i) => String(i.id) !== key);
     showToast('Отклик удалён.');
-    if (items.length > 0) boardEl.focus({ preventScroll: true });
   } catch (error) {
-    button.disabled = false;
-    showToast(error.message, 'error');
-    if (error.status === 404) await load({ silent: true });
+    if (error.status === 404) {
+      items = items.filter((i) => String(i.id) !== key);
+      showToast('Карточка уже удалена. Она убрана с доски.');
+    } else {
+      showToast(error.message, 'error');
+    }
   } finally {
-    deleting.delete(String(id));
+    deleting.delete(key);
+    render();
+    boardEl.focus({ preventScroll: true });
   }
 }
-
 // ---------- Перенос ----------
 
 async function moveItem(id, status) {
   const item = findItem(id);
   const key = String(id);
-  if (!item || item.status === status || pendingMoves.has(key)) return;
+
+  if (
+    !item ||
+    item.status === status ||
+    isBusy(id) ||
+    !STATUSES.some((s) => s.value === status)
+  ) {
+    return;
+  }
 
   const previous = item.status;
+
   pendingMoves.add(key);
   item.status = status;
   render();
 
   try {
     await updateStatus(item.id, status);
-    const label = STATUSES.find((s) => s.value === status)?.label ?? status;
+
+    const label = STATUSES.find((s) => s.value === status).label;
     showToast(`Перенесено в «${label}».`);
   } catch (error) {
-    item.status = previous;
-    render();
-    showToast(`Не удалось перенести карточку: ${error.message}`, 'error');
+    if (error.status === 404) {
+      items = items.filter((i) => String(i.id) !== key);
+      showToast('Карточка уже удалена. Она убрана с доски.', 'error');
+    } else {
+      item.status = previous;
+      showToast(
+        `Не удалось перенести карточку: ${error.message}`,
+        'error',
+      );
+    }
   } finally {
     pendingMoves.delete(key);
-    // Перечитываем список (свежий updated_at), только когда нет других переносов.
-    if (pendingMoves.size === 0) load({ silent: true });
+    render();
   }
 }
 
@@ -323,14 +360,17 @@ searchEl.addEventListener('input', render);
 boardEl.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
+
   const card = button.closest('.card');
   if (!card) return;
+
+  if (isBusy(card.dataset.id)) return;
 
   if (button.classList.contains('js-edit')) {
     const item = findItem(card.dataset.id);
     if (item) openForm({ card: item, trigger: button });
   } else if (button.classList.contains('js-delete')) {
-    removeItem(card.dataset.id, button);
+    removeItem(card.dataset.id);
   }
 });
 
