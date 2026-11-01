@@ -14,5 +14,8 @@ func NewRouter(st *storage.Storage) *http.ServeMux {
 	mux.HandleFunc("DELETE /api/applications/{id}", h.DeleteApplication)
 	mux.HandleFunc("PATCH /api/applications/{id}/status", h.UpdateApplicationStatus)
 	mux.HandleFunc("PUT /api/applications/{id}", h.UpdateApplication)
+
+	mux.Handle("GET /", http.FileServer(http.Dir("web")))
+
 	return mux
 }

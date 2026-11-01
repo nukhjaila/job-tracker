@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Tracker</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/board.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#board">К доске</a>
+
+  <div class="app">
+    <header class="topbar">
+      <h1>Track now.<br>Land anytime.</h1>
+      <p class="tagline">Job Tracker — все отклики на вакансии и стажировки в одной доске.</p>
+    </header>
+
+    <div class="toolbar">
+      <div class="search">
+        <label class="visually-hidden" for="search">Поиск по компании и должности</label>
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+        <input id="search" type="search" placeholder="Поиск по компании или должности" autocomplete="off">
+      </div>
+      <button id="add-btn" class="btn btn-primary btn-add" type="button" disabled>
+        <span aria-hidden="true" class="plus">+</span> Добавить
+      </button>
+    </div>
+
+    <main>
+      <div id="state" class="state" role="status" hidden></div>
+      <div id="board" class="board" role="region" aria-label="Доска откликов" tabindex="0" hidden></div>
+    </main>
+  </div>
+
+  <dialog id="form-dialog" aria-labelledby="form-title">
+    <form id="app-form" novalidate>
+      <div class="dialog-head">
+        <h2 id="form-title">Новый отклик</h2>
+        <button id="form-close" class="btn btn-small" type="button" aria-label="Закрыть">✕</button>
+      </div>
+
+      <div class="field">
+        <label for="f-company">Компания <span class="req" aria-hidden="true">*</span></label>
+        <input id="f-company" name="company" type="text" required aria-required="true" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="f-position">Должность <span class="req" aria-hidden="true">*</span></label>
+        <input id="f-position" name="position" type="text" required aria-required="true" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="f-url">Ссылка на вакансию</label>
+        <input id="f-url" name="url" type="url" placeholder="https://" autocomplete="off">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="f-status">Статус</label>
+          <select id="f-status" name="status"></select>
+        </div>
+        <div class="field">
+          <label for="f-date">Дата собеседования</label>
+          <input id="f-date" name="interview_date" type="datetime-local">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-notes">Заметки</label>
+        <textarea id="f-notes" name="notes" rows="4"></textarea>
+      </div>
+
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+
+      <div class="dialog-actions">
+        <button id="form-cancel" class="btn" type="button">Отмена</button>
+        <button id="form-submit" class="btn btn-primary" type="submit">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</body>
+</html>
