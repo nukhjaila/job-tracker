@@ -173,3 +173,66 @@ func (h *ApplicationHandler) DeleteApplication(w http.ResponseWriter, r *http.Re
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *ApplicationHandler) UpdateApplicationStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id <= 0 {
+		http.Error(w, "Invalid application ID", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	var input struct {
+		Status string `json:"status"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&input); err != nil {
+		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		http.Error(w, "Expected a single JSON object", http.StatusBadRequest)
+		return
+	}
+
+	switch input.Status {
+	case model.StatusWishlist,
+		model.StatusApplied,
+		model.StatusInterview,
+		model.StatusRejected,
+		model.StatusOffer:
+	default:
+		http.Error(w, "Invalid status", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	err = h.storage.UpdateApplicationStatus(ctx, id, input.Status)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			http.Error(
+				w,
+				"Application not found",
+				http.StatusNotFound,
+			)
+			return
+		}
+
+		log.Printf("update application status: %v", err)
+		http.Error(
+			w,
+			"Failed to update application status",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
