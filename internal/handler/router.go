@@ -11,5 +11,6 @@ func NewRouter(st *storage.Storage) *http.ServeMux {
 	h := NewApplicationHandler(st)
 	mux.HandleFunc("GET /api/applications", h.GetApplications)
 	mux.HandleFunc("POST /api/applications", h.CreateApplication)
+	mux.HandleFunc("DELETE /api/applications/{id}", h.DeleteApplication)
 	return mux
 }

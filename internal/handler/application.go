@@ -3,11 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"job-tracker/internal/model"
 	"job-tracker/internal/storage"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -138,4 +140,36 @@ func (h *ApplicationHandler) CreateApplication(w http.ResponseWriter, r *http.Re
 	if _, err := w.Write(data); err != nil {
 		log.Printf("write application response: %v", err)
 	}
+}
+
+func (h *ApplicationHandler) DeleteApplication(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id <= 0 {
+		http.Error(w, "Invalid application ID", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	err = h.storage.DeleteApplication(ctx, id)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			http.Error(
+				w,
+				"Application not found",
+				http.StatusNotFound,
+			)
+			return
+		}
+
+		log.Printf("delete application: %v", err)
+		http.Error(
+			w,
+			"Failed to delete application",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
