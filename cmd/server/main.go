@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
 	"time"
 
-	"job-tracker/internal/model"
+	"job-tracker/internal/handler"
 	"job-tracker/internal/storage"
 )
 
@@ -16,53 +18,19 @@ func main() {
 	}
 	defer st.Close()
 
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		5*time.Second,
-	)
-	defer cancel()
-
-	applications, err := st.GetApplications(ctx)
-	if err != nil {
-		log.Println("Ошибка:", err)
-		return
+	server := &http.Server{
+		Addr:              "localhost:8081",
+		Handler:           handler.NewRouter(st),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
-	if len(applications) == 0 {
-		log.Println("Нет карточек для обновления")
-		return
-	}
+	log.Println("Server running at http://localhost:8081")
 
-	app := applications[0]
-	app.Status = model.StatusApplied
-	app.Notes = "Резюме отправлено"
-
-	if err := st.UpdateApplication(ctx, &app); err != nil {
-		log.Println("Ошибка обновления:", err)
-		return
-	}
-
-	log.Printf(
-		"Карточка обновлена: ID=%d | статус=%s | время=%s",
-		app.ID,
-		app.Status,
-		app.UpdatedAt.Format(time.RFC3339),
-	)
-
-	// Повторно читаем данные, чтобы проверить результат в базе.
-	applications, err = st.GetApplications(ctx)
-	if err != nil {
-		log.Println("Ошибка:", err)
-		return
-	}
-
-	for _, app := range applications {
-		log.Printf(
-			"ID=%d | %s | %s | статус=%s",
-			app.ID,
-			app.Company,
-			app.Position,
-			app.Status,
-		)
+	if err := server.ListenAndServe(); err != nil &&
+		!errors.Is(err, http.ErrServerClosed) {
+		log.Printf("Server error: %v", err)
 	}
 }
