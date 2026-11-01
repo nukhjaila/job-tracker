@@ -125,3 +125,20 @@ func (s *Storage) UpdateApplication(ctx context.Context, app *model.Application)
 	}
 	return nil
 }
+
+func (s *Storage) DeleteApplication(ctx context.Context, id int) error {
+	query := `
+		DELETE FROM applications
+		WHERE id = $1
+	`
+	result, err := s.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("delete application: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
