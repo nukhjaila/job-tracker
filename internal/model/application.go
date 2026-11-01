@@ -3,7 +3,7 @@ package model
 import "time"
 
 const (
-	StatusWishList  = "whishlist"
+	StatusWishlist  = "wishlist"
 	StatusApplied   = "applied"
 	StatusInterview = "interview"
 	StausRejected   = "rejected"
