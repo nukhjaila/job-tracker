@@ -22,18 +22,47 @@ func main() {
 	)
 	defer cancel()
 
-	app := model.Application{
-		Company:  "Doodocs",
-		Position: "Go Intern",
-		Status:   model.StatusWishlist,
-		Notes:    "Первая тестовая карточка",
-	}
-
-	log.Printf("Передаём статус: %q", app.Status)
-	if err := st.CreateApplication(ctx, &app); err != nil {
+	applications, err := st.GetApplications(ctx)
+	if err != nil {
 		log.Println("Ошибка:", err)
 		return
 	}
 
-	log.Printf("Карточка создана: ID=%d, компания=%s", app.ID, app.Company)
+	if len(applications) == 0 {
+		log.Println("Нет карточек для обновления")
+		return
+	}
+
+	app := applications[0]
+	app.Status = model.StatusApplied
+	app.Notes = "Резюме отправлено"
+
+	if err := st.UpdateApplication(ctx, &app); err != nil {
+		log.Println("Ошибка обновления:", err)
+		return
+	}
+
+	log.Printf(
+		"Карточка обновлена: ID=%d | статус=%s | время=%s",
+		app.ID,
+		app.Status,
+		app.UpdatedAt.Format(time.RFC3339),
+	)
+
+	// Повторно читаем данные, чтобы проверить результат в базе.
+	applications, err = st.GetApplications(ctx)
+	if err != nil {
+		log.Println("Ошибка:", err)
+		return
+	}
+
+	for _, app := range applications {
+		log.Printf(
+			"ID=%d | %s | %s | статус=%s",
+			app.ID,
+			app.Company,
+			app.Position,
+			app.Status,
+		)
+	}
 }
