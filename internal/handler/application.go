@@ -236,3 +236,120 @@ func (h *ApplicationHandler) UpdateApplicationStatus(w http.ResponseWriter, r *h
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *ApplicationHandler) UpdateApplication(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil || id <= 0 {
+		http.Error(w, "Invalid application ID", http.StatusBadRequest)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
+	var input struct {
+		Company          string     `json:"company"`
+		Position         string     `json:"position"`
+		URL              string     `json:"url"`
+		Status           string     `json:"status"`
+		InterviewDate    *time.Time `json:"interview_date"`
+		Notes            string     `json:"notes"`
+		PositionInColumn int        `json:"position_in_column"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&input); err != nil {
+		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		http.Error(w, "Expected a single JSON object", http.StatusBadRequest)
+		return
+	}
+
+	input.Company = strings.TrimSpace(input.Company)
+	input.Position = strings.TrimSpace(input.Position)
+
+	if input.Company == "" || input.Position == "" {
+		http.Error(
+			w,
+			"Company and position are required",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	switch input.Status {
+	case model.StatusWishlist,
+		model.StatusApplied,
+		model.StatusInterview,
+		model.StatusRejected,
+		model.StatusOffer:
+	default:
+		http.Error(w, "Invalid status", http.StatusBadRequest)
+		return
+	}
+
+	if input.PositionInColumn < 0 {
+		http.Error(
+			w,
+			"Position in column must not be negative",
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	app := model.Application{
+		ID:               id,
+		Company:          input.Company,
+		Position:         input.Position,
+		URL:              input.URL,
+		Status:           input.Status,
+		InterviewDate:    input.InterviewDate,
+		Notes:            input.Notes,
+		PositionInColumn: input.PositionInColumn,
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	err = h.storage.UpdateApplication(ctx, &app)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			http.Error(
+				w,
+				"Application not found",
+				http.StatusNotFound,
+			)
+			return
+		}
+
+		log.Printf("update application: %v", err)
+		http.Error(
+			w,
+			"Failed to update application",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	data, err := json.Marshal(app)
+	if err != nil {
+		log.Printf("encode application: %v", err)
+		http.Error(
+			w,
+			"Failed to encode application",
+			http.StatusInternalServerError,
+		)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if _, err := w.Write(data); err != nil {
+		log.Printf("write application response: %v", err)
+	}
+}
