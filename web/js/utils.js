@@ -34,13 +34,29 @@ export function formatDateTime(iso) {
 }
 
 // Уведомления. Текст всегда через textContent.
+let toastTimer;
+
 export function showToast(message, type = 'success') {
   const container = document.getElementById('toasts');
   if (!container) return;
+
+  clearTimeout(toastTimer);
+
   const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  if (type === 'error') toast.setAttribute('role', 'alert');
+  toast.className = type === 'error'
+    ? 'toast toast-error'
+    : 'toast';
+
+  if (type === 'error') {
+    toast.setAttribute('role', 'alert');
+  }
+
   toast.textContent = message;
-  container.append(toast);
-  setTimeout(() => toast.remove(), type === 'error' ? 6000 : 3500);
+
+  // Показываем только последнее уведомление.
+  container.replaceChildren(toast);
+
+  toastTimer = setTimeout(() => {
+    toast.remove();
+  }, type === 'error' ? 5000 : 2200);
 }

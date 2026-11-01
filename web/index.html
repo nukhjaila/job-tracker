@@ -80,6 +80,38 @@
     </form>
   </dialog>
 
+  <dialog
+  id="delete-dialog"
+  class="confirm-dialog"
+  aria-labelledby="delete-title"
+  aria-describedby="delete-description"
+>
+  <form method="dialog">
+    <h2 id="delete-title">Удалить отклик?</h2>
+    <p id="delete-description"></p>
+
+    <div class="dialog-actions">
+      <button
+        id="delete-cancel"
+        class="btn"
+        type="submit"
+        value="cancel"
+        autofocus
+      >
+        Отмена
+      </button>
+
+      <button
+        class="btn btn-danger"
+        type="submit"
+        value="delete"
+      >
+        Удалить
+      </button>
+    </div>
+  </form>
+</dialog>
+
   <div id="toasts" class="toasts" aria-live="polite"></div>
 </body>
 </html>

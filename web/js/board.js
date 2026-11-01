@@ -271,6 +271,33 @@ function handleSaved(saved, wasEditing) {
 }
 
 // ---------- Удаление ----------
+function confirmDelete(item) {
+  const dialog = document.getElementById('delete-dialog');
+  const description = document.getElementById('delete-description');
+
+  // Не открываем несколько подтверждений одновременно.
+  if (dialog.open) return Promise.resolve(false);
+
+  const opener = document.activeElement;
+
+  description.textContent =
+    `«${item.company} — ${item.position}». Это действие нельзя отменить.`;
+
+  dialog.returnValue = '';
+
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => {
+      if (opener instanceof HTMLElement && opener.isConnected) {
+        opener.focus();
+      }
+
+      resolve(dialog.returnValue === 'delete');
+    }, { once: true });
+
+    dialog.showModal();
+    document.getElementById('delete-cancel').focus();
+  });
+}
 
 async function removeItem(id) {
   const item = findItem(id);
@@ -278,11 +305,10 @@ async function removeItem(id) {
 
   if (!item || isBusy(id)) return;
 
-  if (!window.confirm(
-    `Удалить отклик «${item.company} — ${item.position}»?`,
-  )) {
-    return;
-  }
+  const confirmed = await confirmDelete(item);
+  if (!confirmed) return;
+
+  if (!findItem(id) || isBusy(id)) return;
 
   deleting.add(key);
   render();
