@@ -142,3 +142,21 @@ func (s *Storage) DeleteApplication(ctx context.Context, id int) error {
 
 	return nil
 }
+
+func (s *Storage) UpdateApplicationStatus(ctx context.Context, id int, status string) error {
+	query := `
+		UPDATE applications
+		SET status = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	result, err := s.pool.Exec(ctx, query, status, id)
+	if err != nil {
+		return fmt.Errorf("update appilcation status: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
