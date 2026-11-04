@@ -5,13 +5,22 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"job-tracker/internal/handler"
 	"job-tracker/internal/storage"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Printf("Failed to load .env: %v", err)
+		return
+	}
+
 	st, err := storage.New(context.Background())
 	if err != nil {
 		log.Fatal(err)
